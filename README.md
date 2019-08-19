@@ -1,3 +1,11 @@
+# 个人修改
+增加长按capslock键，打开关闭CapsLock
+
+# 更新计划
+屏蔽shift和ctrl+space按键切换中英文输入的功能
+HKEY_CURRENT_USER\Software\Microsoft\InputMethod\Settings\CHS\English Switch Key
+
+
 # Caps2CtrlSpace
 CapsLock 切换输入法中英文
 # 原理
