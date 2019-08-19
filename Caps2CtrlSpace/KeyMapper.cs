@@ -14,10 +14,16 @@ namespace Caps2CtrlSpace
         private const int WH_KEYBOARD_LL = 13;
 
         private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int KEYEVENTF_EXTENDEDKEY = 0x1;
+        private const int KEYEVENTF_KEYUP = 0x2;
 
         private static LowLevelKeyboardProc _proc = HookCallback;
 
         private static IntPtr _hookID = IntPtr.Zero;
+
+        private static int _count = 0;
+        private static bool _bsendcaps = false;
 
         public void SetupHook()
         {
@@ -58,13 +64,49 @@ namespace Caps2CtrlSpace
             {
 
                 int vkCode = Marshal.ReadInt32(lParam);
-                if ((Keys)vkCode == Keys.Capital)
+                if ((Keys)vkCode == Keys.Capital && _bsendcaps == false)
                 {
-                    SendKeys.Send("^ "); //将CapsLock转换为Ctrl+Space
+                    _count++;
+                    //SendKeys.Send("^ "); //将CapsLock转换为Ctrl+Space
                     return (IntPtr)1;
                 }
-
             }
+            else if (nCode >= 0 && wParam == (IntPtr)WM_KEYUP)
+            {
+                int vkCode = Marshal.ReadInt32(lParam);
+                if ((Keys)vkCode == Keys.Capital && _bsendcaps == false)
+                {
+                    var num = _count;
+                    _count = 0;
+                    if (num > 0 && num < 10)
+                    {
+                        SendKeys.Send("^ "); //将CapsLock转换为Ctrl+Space
+                        return (IntPtr)1;
+                    }
+                    else
+                    {
+                        _bsendcaps = true;
+                        bool CapsLock = (((ushort)GetKeyState(0x14)) & 0xffff) != 0;
+                        if (CapsLock)
+                        {
+                            keybd_event(0x14, 0x45, KEYEVENTF_EXTENDEDKEY, (UIntPtr)0);
+                            keybd_event(0x14, 0x45, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, (UIntPtr)0);
+                        }
+                        else
+                        {
+                            keybd_event(0x14, 0x45, KEYEVENTF_EXTENDEDKEY, (UIntPtr)1);
+                            keybd_event(0x14, 0x45, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP, (UIntPtr)1);
+                        }
+
+                        //SendKeys.Send("{CAPSLOCK}");
+
+                        return (IntPtr)1;
+                    }
+                    //SendKeys.Send("^ "); //将CapsLock转换为Ctrl+Space
+                    //return (IntPtr)1;
+                }
+            }
+            _bsendcaps = false;
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
 
@@ -89,6 +131,11 @@ namespace Caps2CtrlSpace
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true, CallingConvention = CallingConvention.Winapi)]
+        private static extern short GetKeyState(int keyCode);
 
         //[DllImport("user32.dll")]
         //static extern IntPtr GetForegroundWindow();
